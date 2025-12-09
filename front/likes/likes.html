@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Music Player</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="script.js" defer></script>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+
+</head>
+<body class="bg-gradient-to-br from-gray-900 to-black min-h-screen text-white p-4 md:p-6">
+
+<!-- Main Layout Container -->
+<div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Sidebar -->
+
+
+    <!-- Main Content -->
+    <div class="lg:col-span-3 text-center space-y-6">
+
+        <div id="likes-container ">
+            <div id="like-title"><h1 class="text-2xl">Your likes</h1></div>
+        </div>
+        <div class="likes">
+
+        </div>
+
+
+
+
+
+        </div>
+    </div>
+
+
+
+</div>
+
+
+<template data-music-template>
+    <div  class="justify-start gap-5 flex flex-row   justify-center music-card flex flex-row shadow-xl rounded-2xl  border-gray-700 border-2 w-full h-24  ">
+        <div class="flex items-center gap-4 m-5">
+            <button data-play-button class="cursor-pointer">
+                <svg  xmlns="http://www.w3.org/2000/svg"  fill="white" viewBox="0 0 24 24" stroke-width=".25" stroke="gray" class="play-pic flex size-16  rounded bg-gray-800 ">
+                    <path stroke-linecap="round"  stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
+                </svg>
+
+
+            </button>
+        </div>
+
+
+        <div class="flex  flex-col ">
+
+            <span data-name class=" text-shadow-xl text-xl text-white"></span>
+            <span data-album class=" text-shadow-lg text-sm text-white"></span>
+            <span data-artist class="text-shadow-lg text-sm text-white"></span>
+            <span data-duration class=" text-sm text-zinc-500"></span>
+
+        </div>
+
+
+    </div>
+</template>
+</body>
+</html>

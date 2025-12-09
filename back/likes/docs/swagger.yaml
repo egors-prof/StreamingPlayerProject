@@ -1,0 +1,73 @@
+definitions:
+  http.CommonError:
+    properties:
+      error:
+        type: string
+    type: object
+  http.LikeResponse:
+    properties:
+      liked:
+        description: Текущее состояние
+        type: boolean
+      success:
+        type: boolean
+    type: object
+info:
+  contact:
+    email: test@test.com
+    name: LikeService API
+    url: http://test.com
+  title: LikesService
+paths:
+  /like:
+    get:
+      consumes:
+      - application/json
+      description: |-
+        Добавляет лайк текущего пользователя к указанной песне.
+        Если лайк уже существует, операция игнорируется.
+      parameters:
+      - description: Bearer токен авторизации в формате 'Bearer {token}'
+        in: header
+        name: Authorization
+        required: true
+        type: string
+      - description: ID песни
+        in: query
+        minimum: 1
+        name: s
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.LikeResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.CommonError'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/http.CommonError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.CommonError'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/http.CommonError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.CommonError'
+      security:
+      - BearerAuth: []
+      summary: Поставить лайк песне
+      tags:
+      - likes
+swagger: "2.0"

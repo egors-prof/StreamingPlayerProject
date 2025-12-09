@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Neon Player - Registration</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <script src="script.js"></script>
+    <style>
+        /* Additional custom styles for form validation */
+        .input-error {
+            border-color: #f87171 !important;
+            ring-color: #f87171 !important;
+        }
+
+        .error-message {
+            color: #f87171;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        .success-message {
+            color: #34d399;
+            font-size: 0.875rem;
+            margin-top: 0.25rem;
+        }
+
+        .password-strength {
+            height: 4px;
+            border-radius: 2px;
+            transition: all 0.3s ease;
+        }
+
+        .password-strength.weak {
+            width: 25%;
+            background-color: #f87171;
+        }
+
+        .password-strength.fair {
+            width: 50%;
+            background-color: #fbbf24;
+        }
+
+        .password-strength.good {
+            width: 75%;
+            background-color: #60a5fa;
+        }
+
+        .password-strength.strong {
+            width: 100%;
+            background-color: #34d399;
+        }
+
+        /* Animation for form submission */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.5s ease-out;
+        }
+    </style>
+</head>
+<body class="bg-gradient-to-br from-gray-900 to-black min-h-screen text-white p-4 md:p-6">
+<!-- Main Layout Container -->
+<div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <!-- Sidebar -->
+    <div class="lg:col-span-1">
+        <div class="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-6 border border-gray-700 shadow-2xl h-auto">
+            <!-- Logo/Brand -->
+            <div class="flex items-center gap-3 mb-8">
+                <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                    <i class="fas fa-music text-xl"></i>
+                </div>
+                <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Player</h1>
+            </div>
+
+            <!-- Navigation -->
+            <nav class="space-y-2 mb-8">
+                <a href="#" class="flex items-center gap-3 p-3 rounded-xl bg-gray-800/50 group transition-all">
+                    <i class="fas fa-user-plus text-blue-400 w-5"></i>
+                    <span class="font-medium">Register</span>
+                </a>
+                <a href="#" class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-800/50 group transition-all">
+                    <i class="fas fa-sign-in-alt text-green-400 w-5"></i>
+                    <span class="font-medium">Login</span>
+                </a>
+
+            </nav>
+
+            <!-- User Profile (Hidden for registration page) -->
+
+        </div>
+    </div>
+
+    <!-- Main Content - Registration Form -->
+    <div class="lg:col-span-3 space-y-6">
+        <!-- Top Bar -->
+
+
+        <!-- Registration Form -->
+        <div class="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-6 border border-gray-700 shadow-xl">
+            <div class="max-w-2xl mx-auto">
+                <div class="mb-8 text-center">
+                    <h3 class="text-xl font-bold mb-2">Sign Up for Free</h3>
+                    <p class="text-gray-400">Start enjoying unlimited music today</p>
+                </div>
+
+                <form id="registrationForm" class="space-y-6">
+                    <!-- Name Fields -->
+                    <div >
+                        <div>
+                            <label for="fullName" class="block text-sm font-medium mb-2">Full name</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-user text-gray-500"></i>
+                                </div>
+                                <input type="text"
+                                       id="fullName"
+                                       name="FullName"
+                                       class="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
+                                       placeholder="Enter your full name"
+                                       required>
+                            </div>
+                            <div id="Full name error" class="error-message"></div>
+                        </div>
+
+
+                    </div>
+
+                    <!-- Email Field -->
+                    <div>
+                        <label for="email" class="block text-sm font-medium mb-2">Email Address</label>
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <i class="fas fa-envelope text-gray-500"></i>
+                            </div>
+                            <input type="email"
+                                   id="email"
+                                   name="email"
+                                   class="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
+                                   placeholder="Enter your email address"
+                                   required>
+                        </div>
+                        <div id="emailError" class="error-message"></div>
+                    </div>
+
+                    <!-- Password Fields -->
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="password" class="block text-sm font-medium mb-2">Password</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-lock text-gray-500"></i>
+                                </div>
+                                <input type="password"
+                                       id="password"
+                                       name="password"
+                                       class="w-full pl-10 pr-10 py-3 bg-gray-800/50 border border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
+                                       placeholder="Create a password"
+                                       required>
+                                <div class="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                    <button type="button" id="togglePassword" class="text-gray-500 hover:text-gray-300">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="mt-2">
+                                <div id="passwordStrength" class="password-strength weak"></div>
+                                <div id="passwordError" class="error-message"></div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label for="confirmPassword" class="block text-sm font-medium mb-2">Confirm Password</label>
+                            <div class="relative">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <i class="fas fa-lock text-gray-500"></i>
+                                </div>
+                                <input type="password"
+                                       id="confirmPassword"
+                                       name="confirmPassword"
+                                       class="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500"
+                                       placeholder="Confirm your password"
+                                       required>
+                            </div>
+                            <div id="confirmPasswordError" class="error-message"></div>
+                        </div>
+                    </div>
+
+
+
+
+
+                    <div id="termsError" class="error-message"></div>
+
+                    <!-- Submit Button -->
+                    <div class="pt-4">
+                        <button type="submit"
+                                id="submitBtn"
+                                class="w-full py-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-xl font-bold text-lg transition-all transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-gray-900">
+                            Create Account
+                        </button>
+                    </div>
+
+
+
+                </form>
+
+                <!-- Success Message (Initially Hidden) -->
+                <div id="successMessage" class="hidden mt-6 p-4 bg-gradient-to-r from-green-900/30 to-emerald-900/30 border border-green-700 rounded-xl text-center fade-in">
+                    <div class="flex items-center justify-center gap-3 mb-3">
+                        <i class="fas fa-check-circle text-green-400 text-2xl"></i>
+                        <h4 class="text-xl font-bold">Registration Successful!</h4>
+                    </div>
+                    <p class="text-gray-300">Your account has been created. Welcome to Neon Player!</p>
+                    <p class="text-sm text-gray-400 mt-2">Redirecting to your dashboard in <span id="countdown">5</span> seconds...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+</body>
+</html>

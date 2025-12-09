@@ -1,0 +1,110 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "title": "LikesService",
+        "contact": {
+            "name": "LikeService API",
+            "url": "http://test.com",
+            "email": "test@test.com"
+        }
+    },
+    "paths": {
+        "/like": {
+            "get": {
+                "security": [
+                    {
+                        "BearerAuth": []
+                    }
+                ],
+                "description": "Добавляет лайк текущего пользователя к указанной песне.\nЕсли лайк уже существует, операция игнорируется.",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "likes"
+                ],
+                "summary": "Поставить лайк песне",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Bearer токен авторизации в формате 'Bearer {token}'",
+                        "name": "Authorization",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "minimum": 1,
+                        "type": "integer",
+                        "description": "ID песни",
+                        "name": "s",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/http.LikeResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/http.CommonError"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/http.CommonError"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/http.CommonError"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/http.CommonError"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/http.CommonError"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "http.CommonError": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "http.LikeResponse": {
+            "type": "object",
+            "properties": {
+                "liked": {
+                    "description": "Текущее состояние",
+                    "type": "boolean"
+                },
+                "success": {
+                    "type": "boolean"
+                }
+            }
+        }
+    }
+}

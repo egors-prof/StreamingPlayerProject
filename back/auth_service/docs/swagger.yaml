@@ -1,0 +1,141 @@
+definitions:
+  http.CommonError:
+    properties:
+      error:
+        type: string
+    type: object
+  http.CommonResponse:
+    properties:
+      message:
+        type: string
+    type: object
+  http.SignInRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  http.SignUpRequest:
+    properties:
+      full_name:
+        type: string
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  http.TokenPairResponse:
+    properties:
+      access_token:
+        type: string
+      refresh_token:
+        type: string
+    type: object
+info:
+  contact:
+    email: test@test.com
+    name: AuthService API Service
+    url: http://test.com
+  title: AuthService API
+paths:
+  /auth/refresh:
+    get:
+      description: Обновить пару токенов
+      parameters:
+      - description: вставьте refresh token
+        in: header
+        name: X-Refresh-Token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.TokenPairResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.CommonError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.CommonError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.CommonError'
+      summary: Обновить пару токенов
+      tags:
+      - Auth
+  /auth/sign-in:
+    post:
+      description: Войти в аккаунт
+      parameters:
+      - description: логин и пароль
+        in: body
+        name: request_body
+        required: true
+        schema:
+          $ref: '#/definitions/http.SignInRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/http.TokenPairResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.CommonError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.CommonError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.CommonError'
+      summary: Вход
+      tags:
+      - Auth
+  /auth/sign-up:
+    post:
+      description: Создать новый аккаунт
+      parameters:
+      - description: информация о новом аккаунте
+        in: body
+        name: request_body
+        required: true
+        schema:
+          $ref: '#/definitions/http.SignUpRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/http.CommonResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/http.CommonError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/http.CommonError'
+        "422":
+          description: Unprocessable Entity
+          schema:
+            $ref: '#/definitions/http.CommonError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/http.CommonError'
+      summary: Регистрация
+      tags:
+      - Auth
+swagger: "2.0"
