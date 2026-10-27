@@ -2,45 +2,40 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
+	"syscall"
 
 	_ "github.com/egors-prof/auth_service/docs"
 	"github.com/egors-prof/auth_service/internal/bootstrap"
 	"github.com/egors-prof/auth_service/internal/config"
+	"github.com/egors-prof/streamingplayer/pkg/logger"
 	"github.com/joho/godotenv"
 	"github.com/sethvargo/go-envconfig"
 )
 
-// @title AuthService API
-// @contact.name AuthService API Service
-// @contact.url http://test.com
-// @contact.email test@test.com
+// @title       Auth Service API
+// @version     2.0
+// @description Регистрация, вход, обновление сессии и выход.
+// @BasePath    /
 func main() {
+	// SIGTERM присылают docker stop и Kubernetes, SIGINT — Ctrl+C.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-	// Load .env file into environment variables
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using system environment")
-	}
+	_ = godotenv.Load() // .env удобен локально; в контейнере переменные задаёт compose
 
 	var cfg config.Config
-
-	err := envconfig.ProcessWith(context.TODO(), &envconfig.Config{Target: &cfg, Lookuper: envconfig.OsLookuper()})
-	if err != nil {
-		panic(err)
+	if err := envconfig.Process(ctx, &cfg); err != nil {
+		slog.Error("invalid config", "error", err)
+		os.Exit(1)
 	}
 
-	quitSignal := make(chan os.Signal, 1)
-	signal.Notify(quitSignal, os.Interrupt)
-
-	app := bootstrap.New(cfg)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		<-quitSignal
-		cancel()
-	}()
-
-	app.Run(ctx)
+	log := logger.New("auth_service", cfg.LogLevel)
+	if err := bootstrap.Run(ctx, cfg, log); err != nil {
+		log.Error("service stopped with error", "error", err)
+		os.Exit(1)
+	}
+	log.Info("service stopped")
 }

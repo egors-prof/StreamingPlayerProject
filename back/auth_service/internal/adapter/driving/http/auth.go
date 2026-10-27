@@ -1,53 +1,29 @@
 package http
 
 import (
-	"errors"
-	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/egors-prof/auth_service/internal/domain"
 	"github.com/egors-prof/auth_service/internal/errs"
-	"github.com/egors-prof/auth_service/internal/pkg"
+	"github.com/egors-prof/auth_service/internal/port/usecase"
+	"github.com/egors-prof/streamingplayer/pkg/httpx"
 	"github.com/gin-gonic/gin"
 )
 
+const refreshCookie = "refresh_token"
+
 type SignUpRequest struct {
-	FullName string `json:"full_name"`
-	Username string `json:"username"`
-	Password string `json:"password"`
+	FullName string `json:"full_name" example:"Egor Senatorov"`
+	Username string `json:"username" example:"egor"`
+	Password string `json:"password" example:"correct-horse-battery"`
 }
 
-// SignUp
-// @Summary Регистрация
-// @Description Создать новый аккаунт
-// @Tags Auth
-// @Consume json
-// @Produce json
-// @Param request_body body SignUpRequest true "информация о новом аккаунте"
-// @Success 201 {object} CommonResponse
-// @Failure 422 {object} CommonError
-// @Failure 400 {object} CommonError
-// @Failure 404 {object} CommonError
-// @Failure 500 {object} CommonError
-// @Router /auth/sign-up [post]
-func (s *Server) SignUp(c *gin.Context) {
-
-	var input SignUpRequest
-	if err := c.ShouldBindJSON(&input); err != nil {
-		s.handleError(c, errors.Join(errs.ErrInvalidRequestBody, err))
-		return
-	}
-	fmt.Println(input)
-	if err := s.uc.UserCreater.CreateUser(c, domain.User{
-		FullName: input.FullName,
-		Username: input.Username,
-		Password: input.Password,
-	}); err != nil {
-		s.handleError(c, err)
-		return
-	}
-
-	c.JSON(http.StatusCreated, CommonResponse{Message: "User created successfully!"})
+type UserResponse struct {
+	ID       int    `json:"id"`
+	Username string `json:"username"`
+	FullName string `json:"full_name"`
+	Role     string `json:"role"`
 }
 
 type SignInRequest struct {
@@ -55,92 +31,132 @@ type SignInRequest struct {
 	Password string `json:"password"`
 }
 
-type TokenPairResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
+// SessionResponse — ответ на вход и обновление сессии. Refresh-токена здесь
+// нет: он приходит только в HttpOnly-cookie.
+type SessionResponse struct {
+	AccessToken string       `json:"access_token"`
+	ExpiresAt   time.Time    `json:"expires_at"`
+	User        UserResponse `json:"user"`
+}
+
+func toUserResponse(u domain.User) UserResponse {
+	return UserResponse{ID: u.ID, Username: u.Username, FullName: u.FullName, Role: string(u.Role)}
+}
+
+// SignUp
+// @Summary  Регистрация
+// @Tags     Auth
+// @Accept   json
+// @Produce  json
+// @Param    request body SignUpRequest true "данные нового пользователя"
+// @Success  201 {object} UserResponse
+// @Failure  409 {object} httpx.ErrorResponse "логин занят"
+// @Failure  422 {object} httpx.ErrorResponse "невалидные данные"
+// @Failure  429 {object} httpx.ErrorResponse
+// @Router   /auth/sign-up [post]
+func (s *Server) SignUp(c *gin.Context) {
+	var req SignUpRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.Fail(c, http.StatusBadRequest, "invalid request body")
+		return
+	}
+	user, err := s.registration.SignUp(c.Request.Context(), domain.SignUpInput{
+		FullName: req.FullName, Username: req.Username, Password: req.Password,
+	})
+	if err != nil {
+		s.handleError(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, toUserResponse(user))
 }
 
 // SignIn
-// @Summary Вход
-// @Description Войти в аккаунт
-// @Tags Auth
-// @Consume json
-// @Produce json
-// @Param request_body body SignInRequest true "логин и пароль"
-// @Success 200 {object} TokenPairResponse
-// @Failure 400 {object} CommonError
-// @Failure 404 {object} CommonError
-// @Failure 500 {object} CommonError
-// @Router /auth/sign-in [post]
+// @Summary  Вход
+// @Description Возвращает access-токен в теле и ставит refresh-токен в HttpOnly-cookie.
+// @Tags     Auth
+// @Accept   json
+// @Produce  json
+// @Param    request body SignInRequest true "логин и пароль"
+// @Success  200 {object} SessionResponse
+// @Failure  401 {object} httpx.ErrorResponse
+// @Failure  429 {object} httpx.ErrorResponse
+// @Router   /auth/sign-in [post]
 func (s *Server) SignIn(c *gin.Context) {
-	var input SignInRequest
-	if err := c.ShouldBindJSON(&input); err != nil {
-		s.handleError(c, errors.Join(errs.ErrInvalidRequestBody, err))
+	var req SignInRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.Fail(c, http.StatusBadRequest, "invalid request body")
 		return
 	}
-
-	userID, userRole, err := s.uc.Authenticator.Authenticate(c, domain.User{
-		Username: input.Username,
-		Password: input.Password,
-	})
+	pair, err := s.session.SignIn(c.Request.Context(), req.Username, req.Password)
 	if err != nil {
 		s.handleError(c, err)
 		return
 	}
+	s.respondWithSession(c, pair)
+}
 
-	accessToken, refreshToken, err := s.generateNewTokenPair(userID, input.Username, userRole)
+// Refresh
+// @Summary  Обновить сессию
+// @Description Меняет refresh-токен из cookie на новую пару токенов (ротация).
+// @Tags     Auth
+// @Produce  json
+// @Success  200 {object} SessionResponse
+// @Failure  401 {object} httpx.ErrorResponse
+// @Router   /auth/refresh [post]
+func (s *Server) Refresh(c *gin.Context) {
+	token, err := c.Cookie(refreshCookie)
+	if err != nil || token == "" {
+		s.handleError(c, errs.ErrInvalidToken)
+		return
+	}
+	pair, err := s.session.Refresh(c.Request.Context(), token)
 	if err != nil {
+		s.clearRefreshCookie(c)
 		s.handleError(c, err)
 		return
 	}
+	s.respondWithSession(c, pair)
+}
 
-	c.JSON(http.StatusOK, TokenPairResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+// Logout
+// @Summary  Выход
+// @Tags     Auth
+// @Success  204
+// @Router   /auth/logout [post]
+func (s *Server) Logout(c *gin.Context) {
+	if token, err := c.Cookie(refreshCookie); err == nil && token != "" {
+		if err := s.session.Logout(c.Request.Context(), token); err != nil {
+			s.handleError(c, err)
+			return
+		}
+	}
+	s.clearRefreshCookie(c)
+	c.Status(http.StatusNoContent)
+}
+
+func (s *Server) respondWithSession(c *gin.Context, pair usecase.TokenPair) {
+	s.setRefreshCookie(c, pair.RefreshToken, int(time.Until(pair.RefreshExpiresAt).Seconds()))
+	c.JSON(http.StatusOK, SessionResponse{
+		AccessToken: pair.AccessToken,
+		ExpiresAt:   pair.AccessExpiresAt,
+		User:        toUserResponse(pair.User),
 	})
 }
 
-const (
-	refreshTokenHeader = "X-Refresh-Token"
-)
-
-// RefreshTokenPair
-// @Summary Обновить пару токенов
-// @Description Обновить пару токенов
-// @Tags Auth
-// @Produce json
-// @Param X-Refresh-Token header string true "вставьте refresh token"
-// @Success 200 {object} TokenPairResponse
-// @Failure 400 {object} CommonError
-// @Failure 404 {object} CommonError
-// @Failure 500 {object} CommonError
-// @Router /auth/refresh [get]
-func (s *Server) RefreshTokenPair(c *gin.Context) {
-	token, err := s.extractTokenFromHeader(c, refreshTokenHeader)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, CommonError{Error: err.Error()})
-		return
-	}
-
-	userID, username, isRefresh, userRole, err := pkg.ParseToken(token)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, CommonError{Error: err.Error()})
-		return
-	}
-
-	if !isRefresh {
-		c.JSON(http.StatusUnauthorized, CommonError{Error: "inappropriate token"})
-		return
-	}
-
-	accessToken, refreshToken, err := s.generateNewTokenPair(userID, username, userRole)
-	if err != nil {
-		s.handleError(c, err)
-		return
-	}
-
-	c.JSON(http.StatusOK, TokenPairResponse{
-		AccessToken:  accessToken,
-		RefreshToken: refreshToken,
+// SameSite=Strict: браузер не отправит cookie с чужого сайта (защита от CSRF).
+// Path ограничивает cookie эндпоинтами авторизации.
+func (s *Server) setRefreshCookie(c *gin.Context, value string, maxAge int) {
+	http.SetCookie(c.Writer, &http.Cookie{
+		Name:     refreshCookie,
+		Value:    value,
+		Path:     s.cfg.CookiePath,
+		MaxAge:   maxAge,
+		HttpOnly: true,
+		Secure:   s.cfg.CookieSecure,
+		SameSite: http.SameSiteStrictMode,
 	})
+}
+
+func (s *Server) clearRefreshCookie(c *gin.Context) {
+	s.setRefreshCookie(c, "", -1)
 }

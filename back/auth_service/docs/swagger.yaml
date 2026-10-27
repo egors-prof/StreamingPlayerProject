@@ -1,140 +1,140 @@
+basePath: /
 definitions:
-  http.CommonError:
+  httpx.ErrorResponse:
     properties:
       error:
         type: string
     type: object
-  http.CommonResponse:
-    properties:
-      message:
-        type: string
-    type: object
-  http.SignInRequest:
-    properties:
-      password:
-        type: string
-      username:
-        type: string
-    type: object
-  http.SignUpRequest:
-    properties:
-      full_name:
-        type: string
-      password:
-        type: string
-      username:
-        type: string
-    type: object
-  http.TokenPairResponse:
+  internal_adapter_driving_http.SessionResponse:
     properties:
       access_token:
         type: string
-      refresh_token:
+      expires_at:
+        type: string
+      user:
+        $ref: '#/definitions/internal_adapter_driving_http.UserResponse'
+    type: object
+  internal_adapter_driving_http.SignInRequest:
+    properties:
+      password:
+        type: string
+      username:
+        type: string
+    type: object
+  internal_adapter_driving_http.SignUpRequest:
+    properties:
+      full_name:
+        example: Egor Senatorov
+        type: string
+      password:
+        example: correct-horse-battery
+        type: string
+      username:
+        example: egor
+        type: string
+    type: object
+  internal_adapter_driving_http.UserResponse:
+    properties:
+      full_name:
+        type: string
+      id:
+        type: integer
+      role:
+        type: string
+      username:
         type: string
     type: object
 info:
-  contact:
-    email: test@test.com
-    name: AuthService API Service
-    url: http://test.com
-  title: AuthService API
+  contact: {}
+  description: Регистрация, вход, обновление сессии и выход.
+  title: Auth Service API
+  version: "2.0"
 paths:
+  /auth/logout:
+    post:
+      responses:
+        "204":
+          description: No Content
+      summary: Выход
+      tags:
+      - Auth
   /auth/refresh:
-    get:
-      description: Обновить пару токенов
-      parameters:
-      - description: вставьте refresh token
-        in: header
-        name: X-Refresh-Token
-        required: true
-        type: string
+    post:
+      description: Меняет refresh-токен из cookie на новую пару токенов (ротация).
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.TokenPairResponse'
-        "400":
-          description: Bad Request
+            $ref: '#/definitions/internal_adapter_driving_http.SessionResponse'
+        "401":
+          description: Unauthorized
           schema:
-            $ref: '#/definitions/http.CommonError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/http.CommonError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/http.CommonError'
-      summary: Обновить пару токенов
+            $ref: '#/definitions/httpx.ErrorResponse'
+      summary: Обновить сессию
       tags:
       - Auth
   /auth/sign-in:
     post:
-      description: Войти в аккаунт
+      consumes:
+      - application/json
+      description: Возвращает access-токен в теле и ставит refresh-токен в HttpOnly-cookie.
       parameters:
       - description: логин и пароль
         in: body
-        name: request_body
+        name: request
         required: true
         schema:
-          $ref: '#/definitions/http.SignInRequest'
+          $ref: '#/definitions/internal_adapter_driving_http.SignInRequest'
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.TokenPairResponse'
-        "400":
-          description: Bad Request
+            $ref: '#/definitions/internal_adapter_driving_http.SessionResponse'
+        "401":
+          description: Unauthorized
           schema:
-            $ref: '#/definitions/http.CommonError'
-        "404":
-          description: Not Found
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "429":
+          description: Too Many Requests
           schema:
-            $ref: '#/definitions/http.CommonError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/http.CommonError'
+            $ref: '#/definitions/httpx.ErrorResponse'
       summary: Вход
       tags:
       - Auth
   /auth/sign-up:
     post:
-      description: Создать новый аккаунт
+      consumes:
+      - application/json
       parameters:
-      - description: информация о новом аккаунте
+      - description: данные нового пользователя
         in: body
-        name: request_body
+        name: request
         required: true
         schema:
-          $ref: '#/definitions/http.SignUpRequest'
+          $ref: '#/definitions/internal_adapter_driving_http.SignUpRequest'
       produces:
       - application/json
       responses:
         "201":
           description: Created
           schema:
-            $ref: '#/definitions/http.CommonResponse'
-        "400":
-          description: Bad Request
+            $ref: '#/definitions/internal_adapter_driving_http.UserResponse'
+        "409":
+          description: логин занят
           schema:
-            $ref: '#/definitions/http.CommonError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/http.CommonError'
+            $ref: '#/definitions/httpx.ErrorResponse'
         "422":
-          description: Unprocessable Entity
+          description: невалидные данные
           schema:
-            $ref: '#/definitions/http.CommonError'
-        "500":
-          description: Internal Server Error
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "429":
+          description: Too Many Requests
           schema:
-            $ref: '#/definitions/http.CommonError'
+            $ref: '#/definitions/httpx.ErrorResponse'
       summary: Регистрация
       tags:
       - Auth

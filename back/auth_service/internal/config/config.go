@@ -3,53 +3,42 @@ package config
 import (
 	"fmt"
 	"time"
+
+	"github.com/egors-prof/streamingplayer/pkg/pgdb"
 )
 
-const ServiceLabel = "auth_service"
-
+// Config читается из переменных окружения (go-envconfig).
+// Синтаксис тегов: `env:"NAME, default=value"`; prefix задаёт общий префикс
+// для вложенной структуры.
 type Config struct {
-	HTTPPort   string     `env:"HTTP_PORT" default:"8284"`
-	Postgres   *Postgres  `env:",prefix=POSTGRES_"`
-	AuthParams AuthParams `env:",prefix=JWT_"`
-	RabbitMQ   RabbitMQ   `env:",prefix=RABBITMQ_"`
+	HTTPPort       string   `env:"HTTP_PORT, default=8284"`
+	LogLevel       string   `env:"LOG_LEVEL, default=info"`
+	TrustedProxies []string `env:"TRUSTED_PROXIES"`
+
+	Postgres pgdb.Config `env:", prefix=POSTGRES_"`
+	Auth     Auth        `env:", prefix=AUTH_"`
+	RabbitMQ RabbitMQ    `env:", prefix=RABBITMQ_"`
 }
 
-type AuthParams struct {
-	AccessTokenTllMinutes int    `env:"ACCESS_TOKEN_TLL_MINUTES"`
-	RefreshTokenTllDays   int    `env:"REFRESH_TOKEN_TLL_DAYS"`
-	SECRET                string `env:"SECRET"`
-}
-
-type Postgres struct {
-	PostgresHost          string        `env:"HOST" default:"localhost"`
-	PostgresPort          int           `env:"PORT" default:"5433"`
-	PostgresUser          string        `env:"USER" default:"postgres"`
-	PostgresPassword      string        `env:"PASSWORD" default:"postgres"`
-	PostgresDatabase      string        `env:"DATABASE"`
-	PostgresSSLMode       string        `env:"SSL_MODE" default:"disable"`
-	MaxIdleConnections    int           `env:"MAX_IDLE_CONNECTIONS" default:"25"`
-	MaxOpenConnections    int           `env:"MAX_OPEN_CONNECTIONS" default:"25"`
-	ConnectionMaxLifetime time.Duration `env:"CONNECTION_MAX_LIFETIME" default:"5m"`
+type Auth struct {
+	JWTSecret       string        `env:"JWT_SECRET, required"`
+	AccessTokenTTL  time.Duration `env:"ACCESS_TOKEN_TTL, default=15m"`
+	RefreshTokenTTL time.Duration `env:"REFRESH_TOKEN_TTL, default=720h"`
+	// Refresh-токен хранится в HttpOnly-cookie: JavaScript его не видит,
+	// поэтому при XSS его не украсть. Secure=true требует HTTPS.
+	CookieSecure bool   `env:"COOKIE_SECURE, default=true"`
+	CookiePath   string `env:"COOKIE_PATH, default=/api/auth"`
 }
 
 type RabbitMQ struct {
-	Host     string `env:"HOST" default:"localhost"`
-	Port     int    `env:"PORT" default:"5673"`
-	User     string `env:"USER" default:"guest"`
-	Password string `env:"PASSWORD" default:"guest"`
+	Enabled  bool   `env:"ENABLED, default=true"`
+	Host     string `env:"HOST, default=localhost"`
+	Port     int    `env:"PORT, default=5672"`
+	User     string `env:"USER, default=guest"`
+	Password string `env:"PASSWORD, default=guest"`
+	Queue    string `env:"QUEUE, default=user.registered"`
 }
 
-func (c *Postgres) ConnectionURL() string {
-	if c.PostgresUser == "" {
-		return fmt.Sprintf("host=%s port=%d  dbname=%s sslmode=disable",
-			c.PostgresHost, c.PostgresPort, c.PostgresDatabase)
-	}
-
-	if c.PostgresPassword == "" {
-		return fmt.Sprintf("host=%s port=%d user=%s  dbname=%s sslmode=disable",
-			c.PostgresHost, c.PostgresPort, c.PostgresUser, c.PostgresDatabase)
-	}
-
-	return fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=disable",
-		c.PostgresHost, c.PostgresPort, c.PostgresUser, c.PostgresPassword, c.PostgresDatabase)
+func (r RabbitMQ) URL() string {
+	return fmt.Sprintf("amqp://%s:%s@%s:%d/", r.User, r.Password, r.Host, r.Port)
 }

@@ -9,58 +9,46 @@ const docTemplate = `{
     "info": {
         "description": "{{escape .Description}}",
         "title": "{{.Title}}",
-        "contact": {
-            "name": "AuthService API Service",
-            "url": "http://test.com",
-            "email": "test@test.com"
-        },
+        "contact": {},
         "version": "{{.Version}}"
     },
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/auth/logout": {
+            "post": {
+                "tags": [
+                    "Auth"
+                ],
+                "summary": "Выход",
+                "responses": {
+                    "204": {
+                        "description": "No Content"
+                    }
+                }
+            }
+        },
         "/auth/refresh": {
-            "get": {
-                "description": "Обновить пару токенов",
+            "post": {
+                "description": "Меняет refresh-токен из cookie на новую пару токенов (ротация).",
                 "produces": [
                     "application/json"
                 ],
                 "tags": [
                     "Auth"
                 ],
-                "summary": "Обновить пару токенов",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "вставьте refresh token",
-                        "name": "X-Refresh-Token",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
+                "summary": "Обновить сессию",
                 "responses": {
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/http.TokenPairResponse"
+                            "$ref": "#/definitions/internal_adapter_driving_http.SessionResponse"
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/http.CommonError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/http.CommonError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/http.CommonError"
+                            "$ref": "#/definitions/httpx.ErrorResponse"
                         }
                     }
                 }
@@ -68,7 +56,10 @@ const docTemplate = `{
         },
         "/auth/sign-in": {
             "post": {
-                "description": "Войти в аккаунт",
+                "description": "Возвращает access-токен в теле и ставит refresh-токен в HttpOnly-cookie.",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -79,11 +70,11 @@ const docTemplate = `{
                 "parameters": [
                     {
                         "description": "логин и пароль",
-                        "name": "request_body",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/http.SignInRequest"
+                            "$ref": "#/definitions/internal_adapter_driving_http.SignInRequest"
                         }
                     }
                 ],
@@ -91,25 +82,19 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/http.TokenPairResponse"
+                            "$ref": "#/definitions/internal_adapter_driving_http.SessionResponse"
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
+                    "401": {
+                        "description": "Unauthorized",
                         "schema": {
-                            "$ref": "#/definitions/http.CommonError"
+                            "$ref": "#/definitions/httpx.ErrorResponse"
                         }
                     },
-                    "404": {
-                        "description": "Not Found",
+                    "429": {
+                        "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/http.CommonError"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "$ref": "#/definitions/http.CommonError"
+                            "$ref": "#/definitions/httpx.ErrorResponse"
                         }
                     }
                 }
@@ -117,7 +102,9 @@ const docTemplate = `{
         },
         "/auth/sign-up": {
             "post": {
-                "description": "Создать новый аккаунт",
+                "consumes": [
+                    "application/json"
+                ],
                 "produces": [
                     "application/json"
                 ],
@@ -127,12 +114,12 @@ const docTemplate = `{
                 "summary": "Регистрация",
                 "parameters": [
                     {
-                        "description": "информация о новом аккаунте",
-                        "name": "request_body",
+                        "description": "данные нового пользователя",
+                        "name": "request",
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/http.SignUpRequest"
+                            "$ref": "#/definitions/internal_adapter_driving_http.SignUpRequest"
                         }
                     }
                 ],
@@ -140,31 +127,25 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/http.CommonResponse"
+                            "$ref": "#/definitions/internal_adapter_driving_http.UserResponse"
                         }
                     },
-                    "400": {
-                        "description": "Bad Request",
+                    "409": {
+                        "description": "логин занят",
                         "schema": {
-                            "$ref": "#/definitions/http.CommonError"
-                        }
-                    },
-                    "404": {
-                        "description": "Not Found",
-                        "schema": {
-                            "$ref": "#/definitions/http.CommonError"
+                            "$ref": "#/definitions/httpx.ErrorResponse"
                         }
                     },
                     "422": {
-                        "description": "Unprocessable Entity",
+                        "description": "невалидные данные",
                         "schema": {
-                            "$ref": "#/definitions/http.CommonError"
+                            "$ref": "#/definitions/httpx.ErrorResponse"
                         }
                     },
-                    "500": {
-                        "description": "Internal Server Error",
+                    "429": {
+                        "description": "Too Many Requests",
                         "schema": {
-                            "$ref": "#/definitions/http.CommonError"
+                            "$ref": "#/definitions/httpx.ErrorResponse"
                         }
                     }
                 }
@@ -172,7 +153,7 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "http.CommonError": {
+        "httpx.ErrorResponse": {
             "type": "object",
             "properties": {
                 "error": {
@@ -180,46 +161,61 @@ const docTemplate = `{
                 }
             }
         },
-        "http.CommonResponse": {
-            "type": "object",
-            "properties": {
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "http.SignInRequest": {
-            "type": "object",
-            "properties": {
-                "password": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "http.SignUpRequest": {
-            "type": "object",
-            "properties": {
-                "full_name": {
-                    "type": "string"
-                },
-                "password": {
-                    "type": "string"
-                },
-                "username": {
-                    "type": "string"
-                }
-            }
-        },
-        "http.TokenPairResponse": {
+        "internal_adapter_driving_http.SessionResponse": {
             "type": "object",
             "properties": {
                 "access_token": {
                     "type": "string"
                 },
-                "refresh_token": {
+                "expires_at": {
+                    "type": "string"
+                },
+                "user": {
+                    "$ref": "#/definitions/internal_adapter_driving_http.UserResponse"
+                }
+            }
+        },
+        "internal_adapter_driving_http.SignInRequest": {
+            "type": "object",
+            "properties": {
+                "password": {
+                    "type": "string"
+                },
+                "username": {
+                    "type": "string"
+                }
+            }
+        },
+        "internal_adapter_driving_http.SignUpRequest": {
+            "type": "object",
+            "properties": {
+                "full_name": {
+                    "type": "string",
+                    "example": "Egor Senatorov"
+                },
+                "password": {
+                    "type": "string",
+                    "example": "correct-horse-battery"
+                },
+                "username": {
+                    "type": "string",
+                    "example": "egor"
+                }
+            }
+        },
+        "internal_adapter_driving_http.UserResponse": {
+            "type": "object",
+            "properties": {
+                "full_name": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "integer"
+                },
+                "role": {
+                    "type": "string"
+                },
+                "username": {
                     "type": "string"
                 }
             }
@@ -229,12 +225,12 @@ const docTemplate = `{
 
 // SwaggerInfo holds exported Swagger Info so clients can modify it
 var SwaggerInfo = &swag.Spec{
-	Version:          "",
+	Version:          "2.0",
 	Host:             "",
-	BasePath:         "",
+	BasePath:         "/",
 	Schemes:          []string{},
-	Title:            "AuthService API",
-	Description:      "",
+	Title:            "Auth Service API",
+	Description:      "Регистрация, вход, обновление сессии и выход.",
 	InfoInstanceName: "swagger",
 	SwaggerTemplate:  docTemplate,
 	LeftDelim:        "{{",
