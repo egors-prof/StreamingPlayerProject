@@ -21,8 +21,9 @@ COPY ${SERVICE} ./${SERVICE}
 RUN cd ${SERVICE} && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/app ./cmd
 
 # Финальный образ distroless: только бинарник, без shell и пакетного
-# менеджера. Около 15 МБ вместо ~300 МБ у golang-образа, и меньше
-# поверхность атаки. Пользователь nonroot — процесс работает не от root.
+# менеджера. Образ весит 15–35 МБ (у auth и likes внутри Swagger UI)
+# вместо сотен мегабайт у golang-образа, и меньше поверхность атаки.
+# Пользователь nonroot — процесс работает не от root.
 FROM gcr.io/distroless/static-debian12:nonroot
 COPY --from=build /out/app /app
 USER nonroot:nonroot
