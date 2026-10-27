@@ -1,31 +1,35 @@
 package main
 
 import (
-	"log"
+	"context"
+	"log/slog"
+	"os"
+	"os/signal"
+	"syscall"
 
-	"github.com/egors-prof/searchService/internal/app"
+	"github.com/egors-prof/searchService/internal/bootstrap"
 	"github.com/egors-prof/searchService/internal/config"
-	Server "github.com/egors-prof/searchService/internal/delivery/http"
-	"github.com/egors-prof/searchService/internal/repository"
-	"github.com/egors-prof/searchService/internal/usecases"
+	"github.com/egors-prof/streamingplayer/pkg/logger"
+	"github.com/joho/godotenv"
+	"github.com/sethvargo/go-envconfig"
 )
 
-func main(){
-	cfg,err:=config.GetConfigs()
-	if err!=nil{
-		log.Fatalln(err)
+func main() {
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	_ = godotenv.Load()
+
+	var cfg config.Config
+	if err := envconfig.Process(ctx, &cfg); err != nil {
+		slog.Error("invalid config", "error", err)
+		os.Exit(1)
 	}
-	
 
-	r,err:=repository.InitRepository(&cfg)
-	if err!=nil{
-		log.Fatalln(err)
+	log := logger.New("catalog_service", cfg.LogLevel)
+	if err := bootstrap.Run(ctx, cfg, log); err != nil {
+		log.Error("service stopped with error", "error", err)
+		os.Exit(1)
 	}
-	
-	usecases:=usecases.NewUseCases(r)
-
-	http:=Server.NewServer(usecases)
-	app:=&app.App{Server:http}
-	app.Run(cfg)
-
+	log.Info("service stopped")
 }

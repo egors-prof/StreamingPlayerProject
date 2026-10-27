@@ -2,41 +2,39 @@ package bootstrap
 
 import (
 	"context"
-	"errors"
-	"net/http"
+	"fmt"
+	"log/slog"
 	"time"
 
+	"github.com/egors-prof/likes_service/internal/adapter/driven/dbstore"
+	httpapi "github.com/egors-prof/likes_service/internal/adapter/driving/http"
 	"github.com/egors-prof/likes_service/internal/config"
+	"github.com/egors-prof/likes_service/internal/usecase/likes"
+	"github.com/egors-prof/streamingplayer/pkg/authjwt"
+	"github.com/egors-prof/streamingplayer/pkg/httpx"
+	"github.com/egors-prof/streamingplayer/pkg/pgdb"
 )
 
-const gracefulDeadline = 5 * time.Second
+const shutdownTimeout = 10 * time.Second
 
-type App struct {
-	cfg      config.Config
-	rest     *http.Server
-	teardown []func()
-}
-
-func New(cfg config.Config) *App {
-	app := initLayers(cfg)
-
-	return app
-}
-
-func (app *App) Run(ctx context.Context) {
-	go func() {
-		if err := app.rest.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			panic(err)
-		}
-	}()
-
-	<-ctx.Done()
-
-	for i := range app.teardown {
-		app.teardown[i]()
+func Run(ctx context.Context, cfg config.Config, log *slog.Logger) error {
+	jwtManager, err := authjwt.NewManager(cfg.JWTSecret)
+	if err != nil {
+		return err
 	}
-}
+	db, err := pgdb.Connect(ctx, cfg.Postgres, log)
+	if err != nil {
+		return err
+	}
+	defer db.Close()
 
-func (app *App) HTTPHandler() http.Handler {
-	return app.rest.Handler
+	uc := likes.New(dbstore.NewLikeStorage(db))
+	handler, err := httpapi.New(cfg.TrustedProxies, uc, jwtManager, log)
+	if err != nil {
+		return err
+	}
+	if err := httpx.Run(ctx, httpx.NewServer(":"+cfg.HTTPPort, handler), log, shutdownTimeout); err != nil {
+		return fmt.Errorf("http server: %w", err)
+	}
+	return nil
 }

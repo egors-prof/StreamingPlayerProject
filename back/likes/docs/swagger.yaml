@@ -1,73 +1,92 @@
+basePath: /
 definitions:
-  http.CommonError:
+  httpx.ErrorResponse:
     properties:
       error:
         type: string
     type: object
-  http.LikeResponse:
+  internal_adapter_driving_http.LikesResponse:
     properties:
-      liked:
-        description: Текущее состояние
-        type: boolean
-      success:
-        type: boolean
+      song_ids:
+        items:
+          type: integer
+        type: array
     type: object
 info:
-  contact:
-    email: test@test.com
-    name: LikeService API
-    url: http://test.com
-  title: LikesService
+  contact: {}
+  description: Лайки пользователя. Все ручки требуют access-токен.
+  title: Likes Service API
+  version: "2.0"
 paths:
-  /like:
+  /likes:
     get:
-      consumes:
-      - application/json
-      description: |-
-        Добавляет лайк текущего пользователя к указанной песне.
-        Если лайк уже существует, операция игнорируется.
-      parameters:
-      - description: Bearer токен авторизации в формате 'Bearer {token}'
-        in: header
-        name: Authorization
-        required: true
-        type: string
-      - description: ID песни
-        in: query
-        minimum: 1
-        name: s
-        required: true
-        type: integer
       produces:
       - application/json
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/http.LikeResponse'
-        "400":
-          description: Bad Request
-          schema:
-            $ref: '#/definitions/http.CommonError'
+            $ref: '#/definitions/internal_adapter_driving_http.LikesResponse'
         "401":
           description: Unauthorized
           schema:
-            $ref: '#/definitions/http.CommonError'
-        "404":
-          description: Not Found
-          schema:
-            $ref: '#/definitions/http.CommonError'
-        "422":
-          description: Unprocessable Entity
-          schema:
-            $ref: '#/definitions/http.CommonError'
-        "500":
-          description: Internal Server Error
-          schema:
-            $ref: '#/definitions/http.CommonError'
+            $ref: '#/definitions/httpx.ErrorResponse'
       security:
       - BearerAuth: []
-      summary: Поставить лайк песне
+      summary: Мои лайки
       tags:
-      - likes
+      - Likes
+  /likes/{songID}:
+    delete:
+      parameters:
+      - description: ID песни
+        in: path
+        name: songID
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Убрать лайк
+      tags:
+      - Likes
+    put:
+      parameters:
+      - description: ID песни
+        in: path
+        name: songID
+        required: true
+        type: integer
+      responses:
+        "204":
+          description: No Content
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      security:
+      - BearerAuth: []
+      summary: Поставить лайк
+      tags:
+      - Likes
+securityDefinitions:
+  BearerAuth:
+    description: 'Формат: "Bearer {access_token}"'
+    in: header
+    name: Authorization
+    type: apiKey
 swagger: "2.0"

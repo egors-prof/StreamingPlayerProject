@@ -2,9 +2,8 @@ package dbstore
 
 import (
 	"context"
-	"time"
+	"fmt"
 
-	"github.com/egors-prof/likes_service/internal/domain"
 	"github.com/jmoiron/sqlx"
 )
 
@@ -12,44 +11,35 @@ type LikeStorage struct {
 	db *sqlx.DB
 }
 
-func NewLikeStorage(db *sqlx.DB) *LikeStorage {
-	return &LikeStorage{
-		db: db,
-	}
-}
+func NewLikeStorage(db *sqlx.DB) *LikeStorage { return &LikeStorage{db: db} }
 
-type Like struct {
-	ID        int       `db:"id"`
-	Username  int       `db:"username"`
-	SongID    int       `db:"song_id"`
-	CreatedAt time.Time `db:"created_at"`
-}
-
-func (rl *Like) FromRepositoryToDomain() *domain.Like {
-	return &domain.Like{
-		ID:        rl.ID,
-		UserID:    rl.Username,
-		SongID:    rl.SongID,
-		CreatedAt: rl.CreatedAt,
-	}
-}
-
-func (ls *LikeStorage) SetLike(ctx context.Context, songID int, username string) error {
-	_, err := ls.db.ExecContext(ctx, `
-		INSERT INTO likes (username, song_id) VALUES ($1, $2)`, username, songID)
+func (s *LikeStorage) AddLike(ctx context.Context, userID, songID int) error {
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO likes (user_id, song_id) VALUES ($1, $2)
+		ON CONFLICT (user_id, song_id) DO NOTHING`, userID, songID)
 	if err != nil {
-		return ls.translateError(err)
+		return fmt.Errorf("insert like: %w", err)
 	}
 	return nil
-
 }
 
-func (ls *LikeStorage) RemoveLike(ctx context.Context, username string, songID int) error {
-	_, err := ls.db.ExecContext(ctx, `
-	DELETE FROM likes WHERE username = $1 AND song_id = $2
-`, username, songID)
+func (s *LikeStorage) RemoveLike(ctx context.Context, userID, songID int) error {
+	_, err := s.db.ExecContext(ctx,
+		`DELETE FROM likes WHERE user_id = $1 AND song_id = $2`, userID, songID)
 	if err != nil {
-		return ls.translateError(err)
+		return fmt.Errorf("delete like: %w", err)
 	}
 	return nil
+}
+
+func (s *LikeStorage) LikedSongIDs(ctx context.Context, userID int) ([]int, error) {
+	ids := make([]int, 0)
+	err := s.db.SelectContext(ctx, &ids, `
+		SELECT song_id FROM likes
+		WHERE user_id = $1
+		ORDER BY created_at DESC, id DESC`, userID)
+	if err != nil {
+		return nil, fmt.Errorf("select likes: %w", err)
+	}
+	return ids, nil
 }
