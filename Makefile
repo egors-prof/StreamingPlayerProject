@@ -1,4 +1,4 @@
-GO_MODULES := back/pkg back/auth_service back/StreamMain back/likes back/searchandfetch
+GO_MODULES := pkg services/auth services/stream services/likes services/catalog
 
 .PHONY: up down logs test vet swagger tracks
 
@@ -26,8 +26,8 @@ vet:
 
 ## swagger: перегенерировать Swagger-документацию (нужен swag: go install github.com/swaggo/swag/cmd/swag@v1.16.6)
 swagger:
-	cd back/auth_service && swag init -g cmd/main.go -o docs --parseDependency --parseInternal
-	cd back/likes && swag init -g cmd/main.go -o docs --parseDependency --parseInternal
+	cd services/auth && swag init -g cmd/main.go -o docs --parseDependency --parseInternal
+	cd services/likes && swag init -g cmd/main.go -o docs --parseDependency --parseInternal
 
 ## tracks: заново сгенерировать демо-треки (нужны numpy, scipy, ffmpeg)
 tracks:

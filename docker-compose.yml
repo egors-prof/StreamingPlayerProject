@@ -5,7 +5,7 @@ name: streamingplayer
 
 x-go-service: &go-service
   build:
-    context: ./back
+    context: .
     dockerfile: Dockerfile
   restart: unless-stopped
   depends_on:
@@ -60,10 +60,10 @@ services:
     environment:
       PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
     volumes:
-      - ./back/auth_service/migrations:/migrations/auth:ro
-      - ./back/likes/migrations:/migrations/likes:ro
-      - ./back/searchandfetch/migrations:/migrations/catalog:ro
-      - ./back/StreamMain/migrations:/migrations/stream:ro
+      - ./services/auth/migrations:/migrations/auth:ro
+      - ./services/likes/migrations:/migrations/likes:ro
+      - ./services/catalog/migrations:/migrations/catalog:ro
+      - ./services/stream/migrations:/migrations/stream:ro
     entrypoint: ["/bin/sh", "-ec"]
     command:
       - |
@@ -76,8 +76,8 @@ services:
   auth:
     <<: *go-service
     build:
-      context: ./back
-      args: { SERVICE: auth_service }
+      context: .
+      args: { SERVICE: auth }
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -99,8 +99,8 @@ services:
   stream:
     <<: *go-service
     build:
-      context: ./back
-      args: { SERVICE: StreamMain }
+      context: .
+      args: { SERVICE: stream }
     environment:
       <<: *common-env
       HTTP_PORT: "9999"
@@ -110,12 +110,12 @@ services:
       STREAM_QUEUE_TIMEOUT: 3s
       STREAM_TICKET_TTL: 1h
     volumes:
-      - ./back/StreamMain/music:/music:ro
+      - ./services/stream/music:/music:ro
 
   likes:
     <<: *go-service
     build:
-      context: ./back
+      context: .
       args: { SERVICE: likes }
     environment:
       <<: *common-env
@@ -125,8 +125,8 @@ services:
   catalog:
     <<: *go-service
     build:
-      context: ./back
-      args: { SERVICE: searchandfetch }
+      context: .
+      args: { SERVICE: catalog }
     environment:
       <<: *common-env
       HTTP_PORT: "8888"

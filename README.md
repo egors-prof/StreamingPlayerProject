@@ -34,10 +34,10 @@ docker compose up --build
 flowchart LR
     B[Браузер] -->|":8080"| G[nginx-шлюз]
     G -->|"/"| F[front/ статика]
-    G -->|"/api/auth"| A[auth_service]
-    G -->|"/api/songs"| C[searchandfetch<br/>каталог]
+    G -->|"/api/auth"| A[auth]
+    G -->|"/api/songs"| C[catalog]
     G -->|"/api/likes"| L[likes]
-    G -->|"/api/stream"| S[StreamMain<br/>стриминг]
+    G -->|"/api/stream"| S[stream]
     A --> PA[(auth_db)]
     C --> PC[(catalog_db)]
     L --> PL[(likes_db)]
@@ -48,11 +48,27 @@ flowchart LR
 
 | Сервис | Порт | Что делает |
 | --- | --- | --- |
-| `back/auth_service` | 8284 | Регистрация, вход, ротация refresh-токенов, выход. Публикует `user.registered` в RabbitMQ |
-| `back/StreamMain` | 9999 | Выдаёт билет на трек и отдаёт аудио с поддержкой Range. Ограничивает число одновременных стримов |
-| `back/likes` | 6789 | Лайки пользователя |
-| `back/searchandfetch` | 8888 | Каталог: список с пагинацией, поиск, песни по ID |
-| `back/pkg` | — | Общий модуль: JWT, Postgres, HTTP-сервер и middleware, логгер |
+| `services/auth` | 8284 | Регистрация, вход, ротация refresh-токенов, выход. Публикует `user.registered` в RabbitMQ |
+| `services/stream` | 9999 | Выдаёт билет на трек и отдаёт аудио с поддержкой Range. Ограничивает число одновременных стримов |
+| `services/likes` | 6789 | Лайки пользователя |
+| `services/catalog` | 8888 | Каталог: список с пагинацией, поиск, песни по ID |
+| `pkg` | — | Общий модуль: JWT, Postgres, HTTP-сервер и middleware, логгер |
+
+Структура репозитория:
+
+```
+pkg/                общий Go-модуль сервисов
+services/
+  auth/             у каждого сервиса: cmd/, internal/, migrations/, go.mod
+  stream/           + music/ с аудиофайлами
+  likes/
+  catalog/
+front/              фронтенд (HTML, CSS, JS без сборки)
+deploy/             конфиги nginx и инициализация Postgres
+scripts/            генерация демо-треков
+Dockerfile          один на все Go-сервисы (аргумент SERVICE)
+docker-compose.yml
+```
 
 У каждого сервиса своя база (database per service). Внутри сервисы устроены
 по гексагональной архитектуре (ports & adapters):
@@ -87,7 +103,7 @@ nginx пишет в лог путь без query.
 
 ### Ограничение нагрузки: семафор
 
-`StreamMain/internal/limiter` — семафор на буферизованном канале. Пока сервис
+`services/stream/internal/limiter` — семафор на буферизованном канале. Пока сервис
 отдаёт файл, запрос держит слот. Если все `STREAM_MAX_CONCURRENT` слотов заняты
 дольше `STREAM_QUEUE_TIMEOUT`, клиент получает `503` с `Retry-After`, а плеер
 показывает уведомление и повторяет попытку. Семафор, а не worker pool: каждый
@@ -132,10 +148,10 @@ HTTP-запрос и так обслуживается своей горутин
 
 ```bash
 # Postgres с базами auth_db, likes_db, catalog_db, stream_db, затем миграции:
-migrate -path back/auth_service/migrations -database "postgres://postgres:PASS@localhost:5432/auth_db?sslmode=disable" up
+migrate -path services/auth/migrations -database "postgres://postgres:PASS@localhost:5432/auth_db?sslmode=disable" up
 # ...аналогично для остальных сервисов
 
-cd back/auth_service
+cd services/auth
 AUTH_JWT_SECRET=... POSTGRES_PASSWORD=... POSTGRES_DATABASE=auth_db RABBITMQ_ENABLED=false go run ./cmd
 ```
 
@@ -145,7 +161,7 @@ AUTH_JWT_SECRET=... POSTGRES_PASSWORD=... POSTGRES_DATABASE=auth_db RABBITMQ_ENA
 
 ## Добавить свои треки
 
-1. Положите файл в `back/StreamMain/music/`.
+1. Положите файл в `services/stream/music/`.
 2. Добавьте песню в каталог (`catalog_db`: таблицы `artists`, `albums`, `songs`).
 3. Свяжите ID песни с файлом в `stream_db`:
    `INSERT INTO tracks (song_id, file_name, content_type) VALUES (7, 'my-song.mp3', 'audio/mpeg');`
