@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Create account · Neon Player</title>
+  <link rel="stylesheet" href="css/app.css">
+  <script type="module" src="js/auth-page.js"></script>
+</head>
+<body>
+<main class="auth-page">
+  <form class="auth-card panel" id="auth-form" data-mode="sign-up" novalidate>
+    <a class="brand" href="./">
+      <span class="brand-mark"><span data-icon="music"></span></span>
+      <span class="brand-name gradient-text">Neon Player</span>
+    </a>
+    <h1>Create your account</h1>
+    <p class="lead">Free forever. Like tracks and pick up where you left off.</p>
+
+    <div class="form-error" id="form-error" role="alert" hidden></div>
+
+    <div class="field">
+      <label for="full_name">Full name</label>
+      <input id="full_name" name="full_name" autocomplete="name" maxlength="100" required autofocus>
+      <span class="field-error" id="full_name-error"></span>
+    </div>
+    <div class="field">
+      <label for="username">Username</label>
+      <input id="username" name="username" autocomplete="username" minlength="3" maxlength="32" pattern="[a-zA-Z0-9_.\-]{3,32}" required aria-describedby="username-hint">
+      <span class="hint" id="username-hint">3–32 characters: letters, digits, “_”, “.”, “-”</span>
+      <span class="field-error" id="username-error"></span>
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input id="password" name="password" type="password" autocomplete="new-password" minlength="8" required aria-describedby="password-hint">
+      <div class="strength" aria-hidden="true"><span id="strength-bar"></span></div>
+      <span class="hint" id="password-hint">At least 8 characters</span>
+      <span class="field-error" id="password-error"></span>
+    </div>
+    <div class="field">
+      <label for="confirm">Confirm password</label>
+      <input id="confirm" name="confirm" type="password" autocomplete="new-password" required>
+      <span class="field-error" id="confirm-error"></span>
+    </div>
+
+    <button class="button" type="submit" id="submit">Create account</button>
+    <p class="auth-switch">Already have an account? <a href="sign-in.html">Sign in</a></p>
+  </form>
+</main>
+</body>
+</html>

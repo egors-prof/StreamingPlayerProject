@@ -1,6 +1,7 @@
 package http
 
 import (
+	"errors"
 	"net/http"
 	"time"
 
@@ -111,7 +112,11 @@ func (s *Server) Refresh(c *gin.Context) {
 	}
 	pair, err := s.session.Refresh(c.Request.Context(), token)
 	if err != nil {
-		s.clearRefreshCookie(c)
+		// При гонке двух вкладок cookie не трогаем: в браузере уже лежит
+		// новый токен, который только что получила другая вкладка.
+		if !errors.Is(err, errs.ErrConcurrentRefresh) {
+			s.clearRefreshCookie(c)
+		}
 		s.handleError(c, err)
 		return
 	}

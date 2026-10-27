@@ -15,7 +15,14 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+// reuseGrace — сколько секунд после ротации повтор старого refresh-токена
+// считается не кражей, а гонкой: две вкладки одновременно обновили сессию
+// одним и тем же cookie. Такой запрос получает ErrConcurrentRefresh без отзыва
+// всех сессий, а фронт повторяет refresh уже с новым cookie.
+const reuseGrace = 10 * time.Second
+
 type UseCase struct {
+	now        func() time.Time
 	users      driven.UserStorage
 	tokens     driven.TokenStorage
 	jwt        *authjwt.Manager
@@ -30,6 +37,7 @@ func New(users driven.UserStorage, tokens driven.TokenStorage, jwt *authjwt.Mana
 	// ответа можно узнать, какие логины зарегистрированы.
 	dummy, _ := bcrypt.GenerateFromPassword([]byte("dummy-password"), bcrypt.DefaultCost)
 	return &UseCase{
+		now:   time.Now,
 		users: users, tokens: tokens, jwt: jwt,
 		accessTTL: accessTTL, refreshTTL: refreshTTL, dummyHash: dummy,
 	}
@@ -85,6 +93,10 @@ func (u *UseCase) Refresh(ctx context.Context, refreshToken string) (usecase.Tok
 	err = u.tokens.RotateRefreshToken(ctx, claims.ID, next)
 	switch {
 	case errors.Is(err, errs.ErrTokenReused):
+		rotatedAt, rErr := u.tokens.RefreshTokenRotatedAt(ctx, claims.ID)
+		if rErr == nil && !rotatedAt.IsZero() && u.now().Sub(rotatedAt) < reuseGrace {
+			return usecase.TokenPair{}, errs.ErrConcurrentRefresh
+		}
 		if revokeErr := u.tokens.RevokeAllUserTokens(ctx, user.ID); revokeErr != nil {
 			return usecase.TokenPair{}, revokeErr
 		}

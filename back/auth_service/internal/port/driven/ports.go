@@ -4,6 +4,7 @@ package driven
 
 import (
 	"context"
+	"time"
 
 	"github.com/egors-prof/auth_service/internal/domain"
 )
@@ -20,6 +21,9 @@ type TokenStorage interface {
 	// RotateRefreshToken в одной транзакции отзывает старый токен и сохраняет
 	// новый. Если старый уже отозван — errs.ErrTokenReused, если его нет — errs.ErrNotFound.
 	RotateRefreshToken(ctx context.Context, oldID string, next domain.RefreshToken) error
+	// RefreshTokenRotatedAt возвращает момент, когда токен обменяли на новый
+	// (нулевое время, если его не обменивали, а отозвали иначе или не отзывали).
+	RefreshTokenRotatedAt(ctx context.Context, id string) (time.Time, error)
 	RevokeRefreshToken(ctx context.Context, id string) error
 	RevokeAllUserTokens(ctx context.Context, userID int) error
 }

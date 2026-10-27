@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/egors-prof/auth_service/internal/domain"
 	"github.com/egors-prof/auth_service/internal/errs"
@@ -55,7 +56,7 @@ func (s *TokenStorage) RotateRefreshToken(ctx context.Context, oldID string, nex
 	}
 
 	if _, err = tx.ExecContext(ctx,
-		`UPDATE refresh_tokens SET revoked_at = now() WHERE id = $1`, oldID); err != nil {
+		`UPDATE refresh_tokens SET revoked_at = now(), revoked_reason = 'rotated' WHERE id = $1`, oldID); err != nil {
 		return fmt.Errorf("revoke refresh token: %w", err)
 	}
 	if _, err = tx.ExecContext(ctx,
@@ -69,9 +70,23 @@ func (s *TokenStorage) RotateRefreshToken(ctx context.Context, oldID string, nex
 	return nil
 }
 
+func (s *TokenStorage) RefreshTokenRotatedAt(ctx context.Context, id string) (time.Time, error) {
+	var revokedAt sql.NullTime
+	err := s.db.GetContext(ctx, &revokedAt,
+		`SELECT revoked_at FROM refresh_tokens WHERE id = $1 AND revoked_reason = 'rotated'`, id)
+	if errors.Is(err, sql.ErrNoRows) {
+		return time.Time{}, errs.ErrNotFound
+	}
+	if err != nil {
+		return time.Time{}, fmt.Errorf("select refresh token: %w", err)
+	}
+	return revokedAt.Time, nil
+}
+
 func (s *TokenStorage) RevokeRefreshToken(ctx context.Context, id string) error {
 	_, err := s.db.ExecContext(ctx,
-		`UPDATE refresh_tokens SET revoked_at = now() WHERE id = $1 AND revoked_at IS NULL`, id)
+		`UPDATE refresh_tokens SET revoked_at = now(), revoked_reason = 'logout'
+		 WHERE id = $1 AND revoked_at IS NULL`, id)
 	if err != nil {
 		return fmt.Errorf("revoke refresh token: %w", err)
 	}
@@ -80,7 +95,8 @@ func (s *TokenStorage) RevokeRefreshToken(ctx context.Context, id string) error 
 
 func (s *TokenStorage) RevokeAllUserTokens(ctx context.Context, userID int) error {
 	_, err := s.db.ExecContext(ctx,
-		`UPDATE refresh_tokens SET revoked_at = now() WHERE user_id = $1 AND revoked_at IS NULL`, userID)
+		`UPDATE refresh_tokens SET revoked_at = now(), revoked_reason = 'reuse_detected'
+		 WHERE user_id = $1 AND revoked_at IS NULL`, userID)
 	if err != nil {
 		return fmt.Errorf("revoke user tokens: %w", err)
 	}

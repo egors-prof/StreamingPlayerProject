@@ -35,8 +35,9 @@ func (f *fakeUsers) GetUserByID(_ context.Context, id int) (domain.User, error) 
 }
 
 type tokenRow struct {
-	userID  int
-	revoked bool
+	userID    int
+	revoked   bool
+	rotatedAt time.Time // заполняется только при ротации
 }
 
 type fakeTokens struct {
@@ -60,9 +61,18 @@ func (f *fakeTokens) RotateRefreshToken(_ context.Context, oldID string, next do
 	if row.revoked {
 		return errs.ErrTokenReused
 	}
-	row.revoked = true
+	row.revoked, row.rotatedAt = true, time.Now()
 	f.rows[next.ID] = &tokenRow{userID: next.UserID}
 	return nil
+}
+func (f *fakeTokens) RefreshTokenRotatedAt(_ context.Context, id string) (time.Time, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	row, ok := f.rows[id]
+	if !ok {
+		return time.Time{}, errs.ErrNotFound
+	}
+	return row.rotatedAt, nil
 }
 func (f *fakeTokens) RevokeRefreshToken(_ context.Context, id string) error {
 	f.mu.Lock()
@@ -152,15 +162,18 @@ func TestRefreshRotatesAndDetectsReuse(t *testing.T) {
 		t.Fatal("refresh token must rotate")
 	}
 
-	// Старый токен пришёл снова — похоже на кражу. Отзываем всё.
+	// Старый токен пришёл снова через минуту — похоже на кражу. Отзываем всё.
+	uc.now = func() time.Time { return time.Now().Add(time.Minute) }
 	if _, err := uc.Refresh(ctx, first.RefreshToken); !errors.Is(err, errs.ErrTokenReused) {
 		t.Fatalf("want ErrTokenReused, got %v", err)
 	}
 	if tokens.activeCount() != 0 {
 		t.Fatalf("all sessions must be revoked, %d still active", tokens.activeCount())
 	}
-	if _, err := uc.Refresh(ctx, second.RefreshToken); err == nil {
-		t.Fatal("the newest token must be revoked too")
+	// Новейший токен тоже отозван, и это не «гонка вкладок»: он отозван
+	// из-за кражи, а не ротацией.
+	if _, err := uc.Refresh(ctx, second.RefreshToken); !errors.Is(err, errs.ErrTokenReused) {
+		t.Fatalf("the newest token must be revoked as reused, got %v", err)
 	}
 }
 
@@ -181,5 +194,22 @@ func TestLogoutRevokesRefreshToken(t *testing.T) {
 	}
 	if _, err := uc.Refresh(ctx, pair.RefreshToken); err == nil {
 		t.Fatal("refresh after logout must fail")
+	}
+}
+
+func TestRefreshRaceBetweenTabsIsNotTreatedAsTheft(t *testing.T) {
+	uc, tokens := newTestUseCase(t)
+	ctx := context.Background()
+
+	pair, _ := uc.SignIn(ctx, "egor", "correct-password")
+	if _, err := uc.Refresh(ctx, pair.RefreshToken); err != nil {
+		t.Fatal(err)
+	}
+	// Вторая вкладка пришла с тем же токеном через долю секунды.
+	if _, err := uc.Refresh(ctx, pair.RefreshToken); !errors.Is(err, errs.ErrConcurrentRefresh) {
+		t.Fatalf("want ErrConcurrentRefresh within grace period, got %v", err)
+	}
+	if tokens.activeCount() != 1 {
+		t.Fatalf("the rotated session must survive, active = %d", tokens.activeCount())
 	}
 }

@@ -1,202 +1,94 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Neon Music Player</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="script.js" defer></script>
-    <link rel="stylesheet" href="styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Neon Player</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1'%3E%3Cstop stop-color='%233b82f6'/%3E%3Cstop offset='1' stop-color='%239333ea'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect width='24' height='24' rx='6' fill='url(%23g)'/%3E%3Cpath d='M9.5 16.5V7.5l7-1.5v9' fill='none' stroke='white' stroke-width='1.8'/%3E%3Ccircle cx='7.8' cy='16.5' r='1.8' fill='white'/%3E%3Ccircle cx='14.8' cy='15' r='1.8' fill='white'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="css/app.css">
+  <script type="module" src="js/app.js"></script>
 </head>
-<body class="bg-gradient-to-br from-gray-900 to-black min-h-screen text-white p-4 md:p-6">
+<body>
+<div class="app">
+  <aside class="sidebar panel">
+    <a class="brand" href="#/">
+      <span class="brand-mark"><span data-icon="music"></span></span>
+      <span class="brand-name gradient-text">Neon Player</span>
+    </a>
 
-<!-- Main Layout Container -->
-<div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <nav class="nav" aria-label="Main">
+      <a class="nav-link" href="#/" data-route="home"><span data-icon="home"></span>All tracks</a>
+      <a class="nav-link" href="#/liked" data-route="liked"><span data-icon="heart"></span>Liked<span class="nav-count" id="liked-count"></span></a>
+    </nav>
 
-    <!-- Sidebar -->
-    <div class="lg:col-span-1">
-        <div class="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-6 border border-gray-700 shadow-2xl h-100">
-            <!-- Logo/Brand -->
-            <div class="flex items-center gap-3 mb-8">
-                <div class="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                    <i class="fas fa-music text-xl"></i>
-                </div>
-                <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Player</h1>
-            </div>
-
-            <!-- Navigation -->
-            <nav class="space-y-2 mb-8">
-
-
-                <a href="#" class="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-800/50 group transition-all">
-                    <i class="fas fa-heart text-pink-400 w-5"></i>
-                    <span class="font-medium">Likes</span>
-
-                </a>
-
-            </nav>
-
-
-
-            <!-- User Profile -->
-            <div class="mt-auto pt-6 border-t border-gray-700 ">
-                <div class="flex items-center gap-3">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-12 h-12 rounded-full border-2 border-white">
-                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
-                    </svg>
-
-
-                    <div class="flex-1">
-                        <p id="user-name" class="font-semibold">Sum Ting Wong</p>
-
-                    </div>
-
-                </div>
-            </div>
-        </div>
+    <div class="profile">
+      <div class="avatar guest" id="avatar"><span data-icon="user"></span></div>
+      <div class="profile-info">
+        <div class="profile-name" id="profile-name">Guest</div>
+        <div class="profile-sub" id="profile-sub"><a href="sign-in.html">Sign in</a> to listen</div>
+      </div>
+      <button class="ctrl" id="sign-out" type="button" aria-label="Sign out" title="Sign out" hidden><span data-icon="logout"></span></button>
     </div>
+  </aside>
 
-    <!-- Main Content -->
-    <div class="lg:col-span-3 space-y-6">
+  <main class="main">
+    <header class="topbar panel">
+      <div>
+        <h1 id="greeting">Welcome to Neon Player</h1>
+        <p>Your personal music sanctuary</p>
+      </div>
+      <label class="search">
+        <span class="sr-only">Search</span>
+        <span data-icon="search"></span>
+        <input id="search" type="search" placeholder="Search artists, albums, or songs…" autocomplete="off">
+      </label>
+    </header>
 
-        <!-- Top Bar with Search -->
-        <div class="bg-gradient-to-b from-gray-800 to-gray-900 rounded-2xl p-6 border border-gray-700 shadow-xl">
-            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                    <h2 id="greeting" class="text-2xl font-bold"></h2>
-                    <p class="text-gray-400">Your personal music sanctuary</p>
-                </div>
-
-                <!-- Search Bar -->
-                <div class="flex-1 max-w-2xl">
-                    <div class="relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <i class="fas fa-search text-gray-500"></i>
-                        </div>
-                        <input id="searchInput" type="search"
-                               placeholder="Search artists, albums, or songs..."
-                               class="w-full pl-10 pr-4 py-3 bg-gray-800/50 border border-gray-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent placeholder-gray-500">
-                        <div class="absolute inset-y-0 right-0 flex items-center pr-3">
-
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Stats -->
-                <div class="flex gap-4">
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-blue-400"></div>
-                        <div class="text-xs text-gray-400"></div>
-                    </div>
-                    <div class="text-center">
-                        <div class="text-2xl font-bold text-purple-400"></div>
-                        <div class="text-xs text-gray-400"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Now Playing Section -->
-        <div class="grid grid-cols-1  gap-6">
-            <!-- Current Track -->
-            <div class="flex flex-col bg-gradient-to-b gap-2 from-gray-800 to-gray-900 rounded-2xl p-6 border border-gray-700 shadow-xl">
-
-
-                <div data-music-container id="container" class=" flex flex-col md:flex-col gap-3 items-center ">
-
-<!--                    container-->
-                </div>
-                <div id="show-more" class=" w-full text-center ">
-                    <button id="show-more-button" class="flex w-full gap-5  justify-center content-center px-1 py-2 flex-row cursor-pointer hover:bg-slate-800 text-white font-bold  rounded-xl">
-
-                        <span>Show more</span>
-                        <svg id="check" class="w-5 h-5 text-gray-800  dark:text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 8">
-                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 5.326 5.7a.909.909 0 0 0 1.348 0L13 1"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
-
-
-
-
-    </div>
+    <section class="content panel" aria-labelledby="view-title">
+      <div class="content-head">
+        <h2 id="view-title">All tracks</h2>
+        <span class="meta" id="view-meta"></span>
+      </div>
+      <ul class="track-list" id="tracks" aria-live="polite"></ul>
+      <div id="empty" class="empty" hidden></div>
+      <button class="more-button" id="more" type="button" hidden>Show more <span data-icon="chevronDown"></span></button>
+    </section>
+  </main>
 </div>
 
-<!-- Mini Player (Fixed Bottom) -->
-<div class="fixed bottom-0 left-0 right-0 bg-gradient-to-r from-gray-900 to-gray-800 border-t border-gray-700 p-4 shadow-2xl">
-    <div class="max-w-7xl mx-auto flex items-center justify-between">
-        <div class="flex items-center gap-4">
-            <img src="https://images.unsplash.com/photo-1493225457124-a3eb161ffa5f?w=50"
-                 class="w-12 h-12 rounded-lg">
-            <div>
-                <p class="font-medium">Midnight City</p>
-                <p class="text-sm text-gray-400">M83</p>
-            </div>
-            <button class="text-pink-400 hover:text-pink-300">
-                <i class="fas fa-heart"></i>
-            </button>
-        </div>
-
-        <div class="flex items-center gap-6">
-            <button class="text-gray-400 hover:text-white">
-                <i class="fas fa-random"></i>
-            </button>
-            <button class="text-gray-400 hover:text-white">
-                <i class="fas fa-step-backward"></i>
-            </button>
-            <button class="w-10 h-10 bg-white rounded-full flex items-center justify-center hover:bg-gray-200">
-                <i class="fas fa-pause text-black"></i>
-            </button>
-            <button class="text-gray-400 hover:text-white">
-                <i class="fas fa-step-forward"></i>
-            </button>
-            <button class="text-gray-400 hover:text-white">
-                <i class="fas fa-redo"></i>
-            </button>
-        </div>
-
-        <div class="flex items-center gap-4">
-            <span class="text-sm text-gray-400">1:24</span>
-            <div class="w-32 h-1 bg-gray-700 rounded-full overflow-hidden">
-                <div class="h-full bg-gradient-to-r from-blue-500 to-purple-600 w-1/3"></div>
-            </div>
-            <span class="text-sm text-gray-400">4:04</span>
-            <button class="text-gray-400 hover:text-white">
-                <i class="fas fa-volume-up"></i>
-            </button>
-        </div>
+<footer class="player is-idle" id="player" aria-label="Player">
+  <div class="player-inner">
+    <div class="now">
+      <div class="cover" id="now-cover" style="background: #1f2937"><span data-icon="music"></span></div>
+      <div class="now-text">
+        <div class="now-title" id="now-title">Nothing playing</div>
+        <div class="now-artist" id="now-artist">Pick a track to start</div>
+      </div>
+      <button class="like-button" id="now-like" type="button" aria-label="Like" aria-pressed="false" hidden><span data-icon="heart"></span></button>
     </div>
-</div>
-</div>
 
-
-<template data-music-template>
-    <div  class="justify-start gap-5 flex flex-row   justify-center music-card flex flex-row shadow-xl rounded-2xl  border-gray-700 border-2 w-full h-24  ">
-        <div class="flex items-center gap-4 m-5">
-            <button data-play-button class="cursor-pointer">
-                <svg  xmlns="http://www.w3.org/2000/svg"  fill="white" viewBox="0 0 24 24" stroke-width=".25" stroke="gray" class="play-pic flex size-16  rounded bg-gray-800 ">
-                    <path stroke-linecap="round"  stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.347a1.125 1.125 0 0 1 0 1.972l-11.54 6.347a1.125 1.125 0 0 1-1.667-.986V5.653Z" />
-                </svg>
-
-
-            </button>
-        </div>
-
-
-        <div class="flex  flex-col ">
-
-            <span data-name class=" text-shadow-xl text-xl text-white"></span>
-            <span data-album class=" text-shadow-lg text-sm text-white"></span>
-            <span data-artist class="text-shadow-lg text-sm text-white"></span>
-            <span data-duration class=" text-sm text-zinc-500"></span>
-
-        </div>
-
-
+    <div class="controls">
+      <div class="buttons">
+        <button class="ctrl" id="shuffle" type="button" aria-label="Shuffle" aria-pressed="false" title="Shuffle"><span data-icon="shuffle"></span></button>
+        <button class="ctrl" id="prev" type="button" aria-label="Previous" title="Previous"><span data-icon="prev"></span></button>
+        <button class="play-main" id="play" type="button" aria-label="Play" title="Play (Space)" disabled><span data-icon="play"></span></button>
+        <button class="ctrl" id="next" type="button" aria-label="Next" title="Next"><span data-icon="next"></span></button>
+        <button class="ctrl" id="repeat" type="button" aria-label="Repeat: off" aria-pressed="false" title="Repeat"><span data-icon="repeat"></span></button>
+      </div>
+      <div class="progress-row">
+        <time id="time-current">0:00</time>
+        <input class="range" id="seek" type="range" min="0" max="0" step="0.1" value="0" aria-label="Seek" disabled>
+        <time id="time-total">0:00</time>
+      </div>
     </div>
-</template>
+
+    <div class="extras">
+      <button class="ctrl" id="mute" type="button" aria-label="Mute" title="Mute"><span data-icon="volume"></span></button>
+      <input class="range volume" id="volume" type="range" min="0" max="1" step="0.01" value="0.8" aria-label="Volume">
+    </div>
+  </div>
+</footer>
+
+<div class="toasts" id="toasts" role="status" aria-live="polite"></div>
 </body>
 </html>

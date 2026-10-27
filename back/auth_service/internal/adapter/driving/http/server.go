@@ -53,7 +53,8 @@ func (s *Server) handleError(c *gin.Context, err error) {
 		httpx.Fail(c, http.StatusConflict, err.Error())
 	case errors.Is(err, errs.ErrInvalidCredentials),
 		errors.Is(err, errs.ErrInvalidToken),
-		errors.Is(err, errs.ErrTokenReused):
+		errors.Is(err, errs.ErrTokenReused),
+		errors.Is(err, errs.ErrConcurrentRefresh):
 		httpx.Fail(c, http.StatusUnauthorized, err.Error())
 	default:
 		s.log.Error("request failed", "error", err, "request_id", c.GetString("request_id"))

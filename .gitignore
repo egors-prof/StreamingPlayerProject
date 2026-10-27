@@ -1,0 +1,13 @@
+# Секреты
+.env
+**/.env
+
+# IDE
+.idea/
+.vscode/
+
+# Сборка и тесты
+/bin/
+*.out
+*.test
+coverage.*

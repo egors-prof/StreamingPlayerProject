@@ -1,0 +1,146 @@
+# Запуск всего проекта:  cp .env.example .env  &&  docker compose up --build
+# Приложение: http://localhost:8080
+
+name: streamingplayer
+
+x-go-service: &go-service
+  build:
+    context: ./back
+    dockerfile: Dockerfile
+  restart: unless-stopped
+  depends_on:
+    migrate:
+      condition: service_completed_successfully
+
+x-common-env: &common-env
+  LOG_LEVEL: ${LOG_LEVEL:-info}
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  POSTGRES_USER: postgres
+  POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+  # Доверяем X-Forwarded-For только от адресов внутренних сетей Docker
+  # (там живёт nginx). Иначе клиент мог бы подделать свой IP и обойти rate limit.
+  TRUSTED_PROXIES: 172.16.0.0/12,10.0.0.0/8,192.168.0.0/16
+  AUTH_JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env (at least 32 characters)}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./deploy/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:15672:15672" # веб-интерфейс RabbitMQ (guest/guest), только с этой машины
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  # Накатывает миграции всех сервисов и завершается. Сервисы стартуют
+  # только после её успешного завершения (service_completed_successfully).
+  migrate:
+    image: migrate/migrate:v4.18.3
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+    volumes:
+      - ./back/auth_service/migrations:/migrations/auth:ro
+      - ./back/likes/migrations:/migrations/likes:ro
+      - ./back/searchandfetch/migrations:/migrations/catalog:ro
+      - ./back/StreamMain/migrations:/migrations/stream:ro
+    entrypoint: ["/bin/sh", "-ec"]
+    command:
+      - |
+        for pair in auth:auth_db likes:likes_db catalog:catalog_db stream:stream_db; do
+          dir=$${pair%%:*}; db=$${pair##*:}
+          echo "migrating $$db"
+          migrate -path /migrations/$$dir -database "postgres://postgres:$$PGPASSWORD@postgres:5432/$$db?sslmode=disable" up
+        done
+
+  auth:
+    <<: *go-service
+    build:
+      context: ./back
+      args: { SERVICE: auth_service }
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      <<: *common-env
+      HTTP_PORT: "8284"
+      POSTGRES_DATABASE: auth_db
+      AUTH_ACCESS_TOKEN_TTL: 15m
+      AUTH_REFRESH_TOKEN_TTL: 720h
+      # По HTTP (localhost) cookie с флагом Secure браузер может не принять.
+      # В продакшене за HTTPS — true.
+      AUTH_COOKIE_SECURE: ${COOKIE_SECURE:-false}
+      AUTH_COOKIE_PATH: /api/auth
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_QUEUE: user.registered
+
+  stream:
+    <<: *go-service
+    build:
+      context: ./back
+      args: { SERVICE: StreamMain }
+    environment:
+      <<: *common-env
+      HTTP_PORT: "9999"
+      POSTGRES_DATABASE: stream_db
+      STREAM_MUSIC_DIR: /music
+      STREAM_MAX_CONCURRENT: ${STREAM_MAX_CONCURRENT:-50}
+      STREAM_QUEUE_TIMEOUT: 3s
+      STREAM_TICKET_TTL: 1h
+    volumes:
+      - ./back/StreamMain/music:/music:ro
+
+  likes:
+    <<: *go-service
+    build:
+      context: ./back
+      args: { SERVICE: likes }
+    environment:
+      <<: *common-env
+      HTTP_PORT: "6789"
+      POSTGRES_DATABASE: likes_db
+
+  catalog:
+    <<: *go-service
+    build:
+      context: ./back
+      args: { SERVICE: searchandfetch }
+    environment:
+      <<: *common-env
+      HTTP_PORT: "8888"
+      POSTGRES_DATABASE: catalog_db
+
+  gateway:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    depends_on: [auth, stream, likes, catalog]
+    ports:
+      - "8080:80"
+    volumes:
+      - ./front:/usr/share/nginx/html:ro
+      - ./deploy/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+
+volumes:
+  pgdata:

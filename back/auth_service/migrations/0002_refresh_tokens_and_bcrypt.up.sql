@@ -9,6 +9,9 @@ CREATE TABLE IF NOT EXISTS refresh_tokens
     user_id    INTEGER     NOT NULL REFERENCES users (id) ON DELETE CASCADE,
     expires_at TIMESTAMPTZ NOT NULL,
     revoked_at TIMESTAMPTZ,
+    -- Почему отозван: rotated (обменян на новый), logout, reuse_detected.
+    -- Льготное окно для гонки вкладок действует только для rotated.
+    revoked_reason VARCHAR(16),
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
