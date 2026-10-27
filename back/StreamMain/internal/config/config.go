@@ -1,39 +1,30 @@
 package config
 
 import (
-	"context"
+	"time"
 
-	"github.com/joho/godotenv"
-	"github.com/sethvargo/go-envconfig"
+	"github.com/egors-prof/streamingplayer/pkg/pgdb"
 )
 
 type Config struct {
-	HTTPPort string    `env:"HTTP_PORT" default:"8888"`
-	Postgres *Postgres `env:",prefix=POSTGRES_"`
+	HTTPPort       string   `env:"HTTP_PORT, default=9999"`
+	LogLevel       string   `env:"LOG_LEVEL, default=info"`
+	TrustedProxies []string `env:"TRUSTED_PROXIES"`
+	JWTSecret      string   `env:"AUTH_JWT_SECRET, required"`
+
+	Postgres pgdb.Config `env:", prefix=POSTGRES_"`
+	Stream   Stream      `env:", prefix=STREAM_"`
 }
 
-type Postgres struct {
-	PostgresHost     string `env:"HOST" `
-	PostgresPort     int    `env:"PORT" `
-	PostgresUser     string `env:"USER" `
-	PostgresPassword string `env:"PASSWORD" `
-	PostgresDatabase string `env:"DATABASE" `
-	PostgresSSLMode  string `env:"SSL_MODE" `
-}
-
-func GetConfigs() (*Config, error) {
-	if err := godotenv.Load(); err != nil {
-
-		return &Config{}, err
-	}
-
-	var cfg Config
-
-	err := envconfig.ProcessWith(context.TODO(), &envconfig.Config{Target: &cfg, Lookuper: envconfig.OsLookuper()})
-	if err != nil {
-
-		return &Config{}, err
-	}
-
-	return &cfg, nil
+type Stream struct {
+	// Каталог с аудиофайлами.
+	MusicDir string `env:"MUSIC_DIR, default=./music"`
+	// Сколько стримов сервер отдаёт одновременно.
+	MaxConcurrent int `env:"MAX_CONCURRENT, default=50"`
+	// Сколько запрос ждёт свободного слота, прежде чем получить 503.
+	QueueTimeout time.Duration `env:"QUEUE_TIMEOUT, default=3s"`
+	// Срок жизни билета на прослушивание (подписанной ссылки на трек).
+	TicketTTL time.Duration `env:"TICKET_TTL, default=1h"`
+	// Публичный префикс пути, по которому фронт обращается к сервису через шлюз.
+	PublicPrefix string `env:"PUBLIC_PREFIX, default=/api"`
 }

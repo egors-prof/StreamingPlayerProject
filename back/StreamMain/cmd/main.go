@@ -2,37 +2,34 @@ package main
 
 import (
 	"context"
-	"log"
+	"log/slog"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/egors-prof/streaming/internal/bootstrap"
 	"github.com/egors-prof/streaming/internal/config"
+	"github.com/egors-prof/streamingplayer/pkg/logger"
 	"github.com/joho/godotenv"
 	"github.com/sethvargo/go-envconfig"
 )
 
 func main() {
-	if err := godotenv.Load(); err != nil {
-		log.Println("No .env file found, using system environment")
-	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+
+	_ = godotenv.Load()
 
 	var cfg config.Config
-
-	err := envconfig.ProcessWith(context.TODO(), &envconfig.Config{Target: &cfg, Lookuper: envconfig.OsLookuper()})
-	if err != nil {
-		panic(err)
+	if err := envconfig.Process(ctx, &cfg); err != nil {
+		slog.Error("invalid config", "error", err)
+		os.Exit(1)
 	}
-	quitSignal := make(chan os.Signal, 1)
-	signal.Notify(quitSignal, os.Interrupt)
 
-	app := bootstrap.New(cfg)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	go func() {
-		<-quitSignal
-		cancel()
-	}()
-
-	app.Run(ctx)
+	log := logger.New("stream_service", cfg.LogLevel)
+	if err := bootstrap.Run(ctx, cfg, log); err != nil {
+		log.Error("service stopped with error", "error", err)
+		os.Exit(1)
+	}
+	log.Info("service stopped")
 }

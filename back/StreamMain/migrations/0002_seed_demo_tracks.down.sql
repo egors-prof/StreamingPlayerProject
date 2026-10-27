@@ -1,0 +1,1 @@
+DELETE FROM tracks WHERE song_id BETWEEN 1 AND 6;
